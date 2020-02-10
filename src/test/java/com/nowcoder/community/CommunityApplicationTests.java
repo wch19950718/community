@@ -2,6 +2,7 @@ package com.nowcoder.community;
 
 
 import com.nowcoder.community.dao.AlphaDao;
+import com.nowcoder.community.dao.UserMapper;
 import com.nowcoder.community.service.AlphaService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -20,7 +21,7 @@ import java.util.Date;
 @RunWith(SpringRunner.class)
 @SpringBootTest
 @ContextConfiguration(classes=CommunityApplication.class)
-class CommunityApplicationTests implements ApplicationContextAware {
+public class CommunityApplicationTests implements ApplicationContextAware {
 	private ApplicationContext applicationContext;
 
 
@@ -54,6 +55,13 @@ class CommunityApplicationTests implements ApplicationContextAware {
 		System.out.println(simpleDateFormat.format(new Date()));
 	}
 
+	@Autowired
+	private SimpleDateFormat simpleDateFormat;
+	@Test
+	public void testSimpleDateFormat(){
+		System.out.println(simpleDateFormat.format(new Date()));
+
+	}
 
 	@Autowired
 	@Qualifier("alphaDaoHibernateImpl")
@@ -64,6 +72,12 @@ class CommunityApplicationTests implements ApplicationContextAware {
 		System.out.println(alphaDao.select());
 		System.out.println(alphaDao2.select());
 	}
+	@Autowired
+	private UserMapper userMapper;
 
+	@Test
+	public void testDelete(){
+		userMapper.deleteById(155);
+	}
 
 }

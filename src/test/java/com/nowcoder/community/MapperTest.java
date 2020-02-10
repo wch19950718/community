@@ -1,6 +1,7 @@
 package com.nowcoder.community;
 
 import com.nowcoder.community.dao.DiscussPostMapper;
+import com.nowcoder.community.dao.UserMapper;
 import com.nowcoder.community.entity.DiscussPost;
 import com.nowcoder.community.entity.Page;
 import com.nowcoder.community.entity.User;
@@ -64,5 +65,7 @@ public class MapperTest {
         System.out.println(page.getTo());
 
     }
+
+
 
 }
