@@ -17,4 +17,5 @@ public interface UserMapper {
     int updatePassword(int id,String password);
 
     int deleteById(int id);
+
 }
