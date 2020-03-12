@@ -31,4 +31,16 @@ public class CommentTest {
             System.out.println(comment.toString());
         }
     }
+
+    @Test
+    public void testComment(){
+        int count = commentMapper.selectCountByEntity(1,280);
+        System.out.println(count);
+
+
+        List<Comment> comments = commentMapper.selectCommnetsByEntity(1,280,0,20);
+        for(Comment comment:comments){
+            System.out.println(comment.toString());
+        }
+    }
 }
