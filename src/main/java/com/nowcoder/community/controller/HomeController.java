@@ -43,4 +43,10 @@ public class HomeController {
         model.addAttribute("discussPostList",discussPostList);
         return "/index";
     }
+
+    //对于服务端出错我们不采用springboot提供的简洁方案，因为我们希望对异常进行记录等，在记录后我们重定向到500页面
+    @RequestMapping(path = "/error",method = RequestMethod.GET)
+    public String getErrorPage(){
+        return "/error/500";
+    }
 }
