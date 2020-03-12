@@ -1,22 +1,47 @@
 package com.nowcoder.community.controller;
 
+import com.google.code.kaptcha.Producer;
 import com.nowcoder.community.entity.User;
 import com.nowcoder.community.service.UserService;
 import com.nowcoder.community.util.CommunityConstant;
-import com.nowcoder.community.util.CommunityUtil;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.ibatis.ognl.ObjectElementsAccessor;
+import org.hibernate.validator.internal.util.logging.formatter.CollectionOfObjectsToStringFormatter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.Banner;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.ui.ModelMap;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
+import javax.imageio.ImageIO;
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Map;
 
 @Controller
 public class LoginController implements CommunityConstant {
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private Producer kaptchaProducer;
+
+    @Value("server.servlet.context-path")
+    String contextPath;
+
+
+    public static final Logger logger = LoggerFactory.getLogger(LoginController.class);
 
     @RequestMapping(path = "/login" , method = RequestMethod.GET)
     public String getLoginPage(){
@@ -59,6 +84,59 @@ public class LoginController implements CommunityConstant {
         }
 
         return "/site/operate-result";
+    }
+
+    @RequestMapping(path = "/kaptcha",method = RequestMethod.GET)
+    public void kaptcha(HttpServletResponse response,HttpSession session){
+        String text = kaptchaProducer.createText();
+        BufferedImage image = kaptchaProducer.createImage(text);
+
+        //验证码是敏感数据，要保存到session中，便于在用户输入验证码后比较
+        session.setAttribute("kaptcha",text);
+
+        //写入response中
+        response.setContentType("image/png");
+        try {
+            OutputStream outputStream = response.getOutputStream();
+            ImageIO.write(image,"png",outputStream);
+        } catch (IOException e) {
+            logger.error("验证码响应失败！",e.getMessage());
+        }
+
+    }
+
+    @RequestMapping(path = "/login", method = RequestMethod.POST)
+    public String login(String username, String password, String code, boolean rememberMe,
+                        Model model,HttpSession session,HttpServletResponse response){
+        //对验证码进行处理
+        String kaptcha = (String) session.getAttribute("kaptcha");
+        if(StringUtils.isBlank(kaptcha) | StringUtils.isBlank(code) | !code.equalsIgnoreCase(kaptcha)){
+            model.addAttribute("codeMsg","验证码不正确！");
+            return "/site/login";
+        }
+
+        //对账号密码进行处理
+        int expired = rememberMe?REMEMBER_EXPIRED_SECONDS:DEFAULT_EXPIRED_SECONDS;
+        Map<String, Object> map = userService.login(username,password,expired);
+        if(map.containsKey("ticket")){
+            Cookie cookie = new Cookie("ticket",map.get("ticket").toString());
+            cookie.setPath(contextPath);
+            cookie.setMaxAge(expired);
+            response.addCookie(cookie);
+            return "redirect:/index";
+        }else{
+            model.addAttribute("usernameMsg",map.get("usernameMsg"));
+            model.addAttribute("passwordMsg",map.get("passwordMsg"));
+            return "/site/login";
+        }
+
+    }
+
+    @RequestMapping(path = "/logout", method = RequestMethod.GET)
+    public String logout(@CookieValue("ticket") String ticket){
+        userService.logout(ticket);
+        return "redirect:/login";
+
     }
 
 

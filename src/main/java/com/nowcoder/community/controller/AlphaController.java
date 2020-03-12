@@ -2,19 +2,20 @@ package com.nowcoder.community.controller;
 
 import com.fasterxml.jackson.databind.deser.std.MapDeserializer;
 import com.nowcoder.community.service.AlphaService;
+import com.nowcoder.community.util.CommunityUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.web.servlet.server.Session;
 import org.springframework.http.converter.json.GsonBuilderUtils;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 import com.nowcoder.community.service.AlphaService;
 import org.springframework.web.servlet.ModelAndView;
 
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
@@ -147,6 +148,54 @@ public class AlphaController {
 
         return list;
 
+    }
+
+    @RequestMapping(path="/cookie/set",method = RequestMethod.GET)
+    @ResponseBody
+    public String setCookie(HttpServletResponse response){
+        Cookie cookie = new Cookie("code", CommunityUtil.generateUUID());
+        //有效路径（我在这个路径和他的子路径下才会生效
+        cookie.setPath("/community/alpha");
+        //生存期限（默认关掉浏览器就消失（存在内存），设置时间可以在时间范围内存在，存在硬盘里）
+        cookie.setMaxAge(60*10);
+
+        response.addCookie(cookie);
+        return "set cookie";
+    }
+
+    @RequestMapping(path="/cookie/get",method = RequestMethod.GET)
+    @ResponseBody
+    public String getCookie(@CookieValue("code") String code){
+        System.out.println(code);
+        return "get cookie";
+
+    }
+
+    //Session
+    @RequestMapping(path = "/session/set", method = RequestMethod.GET)
+    @ResponseBody
+    public String setSession(HttpSession session){
+        session.setAttribute("name","wanchenghao");
+        session.setAttribute("age",1);
+        session.setMaxInactiveInterval(60*10);
+        return "set session";
+    }
+
+    @RequestMapping(path = "/session/get", method = RequestMethod.GET)
+    @ResponseBody
+    public String getSession(HttpSession session){
+        System.out.println(session.getAttribute("name"));
+        System.out.println(session.getAttribute("age"));
+        return "get session";
+    }
+
+    @RequestMapping(path = "/ajax",method = RequestMethod.POST)
+    @ResponseBody
+    public String testAjax(String name, int age){
+        System.out.println(name);
+        System.out.println(age);
+        String json = CommunityUtil.getJSONString(0,"成功");
+        return json;
     }
 
 }

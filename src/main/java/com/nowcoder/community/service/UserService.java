@@ -1,12 +1,14 @@
 package com.nowcoder.community.service;
 
+import com.nowcoder.community.dao.LoginTicketMapper;
 import com.nowcoder.community.dao.UserMapper;
+import com.nowcoder.community.entity.LoginTicket;
 import com.nowcoder.community.entity.User;
 import com.nowcoder.community.util.CommunityConstant;
 import com.nowcoder.community.util.CommunityUtil;
 import com.nowcoder.community.util.MailClient;
 import org.apache.commons.lang3.StringUtils;
-import org.aspectj.lang.annotation.AdviceName;
+import org.apache.ibatis.ognl.ObjectElementsAccessor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -35,7 +37,11 @@ public class UserService implements CommunityConstant {
     @Value("${community.path.domain}")
     private String domain;
 
-    public User findUser(int userId){
+    @Autowired
+    private LoginTicketMapper loginTicketMapper;
+
+
+    public User findUserById(int userId){
 
         return userMapper.selectById(userId);
     }
@@ -103,5 +109,96 @@ public class UserService implements CommunityConstant {
         }
 
     }
+
+    //登录业务处理，主要包含了了对用户账号密码的登录处理，验证码在视图层处理
+    //封装账户密码相关错误信息，如果没有错误则产生LoginTicket
+    public Map<String,Object> login(String username,String password,int expired){
+        Map<String, Object> map =new HashMap<>();
+        //对进来的账号密码进行判空处理
+        if(StringUtils.isBlank(username)){
+            map.put("usernameMsg","账号不能为空！");
+            return map;
+        }
+        if(StringUtils.isBlank(password)){
+            map.put("passwordMsg","密码不能为空");
+            return map;
+        }
+
+        //验证账号密码
+        User user = userMapper.selectByName(username);
+        if(user == null){
+            map.put("usernameMsg","账号不存在！");
+            return map;
+        }
+        if(user.getStatus()==0){
+            map.put("usernameMsg","账号未激活！");
+            return map;
+        }
+        password = CommunityUtil.md5(password+user.getSalt());
+        if(!password.equals(user.getPassword())){
+            map.put("passwordMsg","密码不正确！");
+            return map;
+        }
+
+        LoginTicket loginTicket = new LoginTicket();
+        loginTicket.setUserId(user.getId());
+        String ticket = CommunityUtil.generateUUID();
+        loginTicket.setTicket(ticket);
+        loginTicket.setStatus(0);
+        long expiredMilliSeconds = ((long)expired)*1000;
+        loginTicket.setExpired(new Date(System.currentTimeMillis()+expiredMilliSeconds));
+        loginTicketMapper.insertLoginTicket(loginTicket);
+        map.put("ticket",ticket);
+        return map;
+
+
+    }
+
+    public void logout(String ticket){
+        loginTicketMapper.updateLoginTicket(ticket,1);
+    }
+
+    public LoginTicket findLoginTicket(String ticket){
+        return loginTicketMapper.selectLoginTicket(ticket);
+    }
+
+    public int updateHeader(int userId, String headerUrl){
+        return userMapper.updateHeader(userId,headerUrl);
+    }
+
+    public Map<String,Object> updatePassword(int userId,String oldPassword, String newPassword){
+        Map<String,Object> map = new HashMap<>();
+        if(StringUtils.isBlank(oldPassword)){
+            map.put("oldPasswordMsg","原密码不能为空！");
+            return map;
+        }
+        if(StringUtils.isBlank(newPassword)){
+            map.put("newPasswordMsg","新密码不能为空！");
+            return map;
+        }
+        User user = userMapper.selectById(userId);
+        oldPassword = CommunityUtil.md5(oldPassword+user.getSalt());
+        newPassword = CommunityUtil.md5(newPassword+user.getSalt());
+        if(!oldPassword.equals(user.getPassword())){
+            map.put("oldPasswordMsg","原密码错误！");
+            return map;
+        }
+        if(oldPassword.equals(newPassword)){
+            map.put("newPasswordMsg","新密码不能和原密码相同!");
+            return map;
+        }
+
+        userMapper.updatePassword(userId,newPassword);
+        return map;
+
+
+
+    }
+
+    public User findUserByName(String name){
+        return userMapper.selectByName(name);
+    }
+
+
 
 }
